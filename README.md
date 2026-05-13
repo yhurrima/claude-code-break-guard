@@ -74,7 +74,7 @@ node scripts/install.js --work 30m --rest 5m
 BREAK_GUARD_EMERGENCY
 ```
 
-默认会临时跳过 `2` 分钟。正式使用时可以在 `config.json` 里把 `emergencySkipDurationMs` 改成你需要的时长。
+这会跳过当前这次休息，并从发送指令的时间点开始重新计算下一轮工作时间。
 
 ### 查看状态
 

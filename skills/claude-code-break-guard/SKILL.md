@@ -89,9 +89,9 @@ BREAK_GUARD_EMERGENCY
 Current project behavior:
 
 - It skips the current break.
-- It resets the work timer.
-- It temporarily disables enforcement for `emergencySkipDurationMs`.
-- It returns and notifies: `已开启紧急跳过，未来 2 分钟内不会强制休息。`
+- It resets the work timer from the moment the command is submitted.
+- It immediately starts the next work cycle.
+- It returns and notifies: `已开启紧急跳过，已重新开始下一轮工作计时。`
 
 Do not expose code commands for emergency skip unless the user explicitly asks for a terminal-only workaround.
 
@@ -131,7 +131,7 @@ Key state fields:
 - `workStartedAtMs`: current work cycle start.
 - `breakStartedAtMs`: current forced break start.
 - `restCompletedAtMs`: monitor confirmed a real idle rest after break start.
-- `skipBreakUntilMs`: emergency skip expiry.
+- `restAccumulatedMs`: accumulated valid idle rest during the current break.
 
 If a prompt is blocked after the user says they rested, check whether `restCompletedAtMs >= breakStartedAtMs`. If not, explain that the monitor did not observe enough continuous macOS idle time.
 

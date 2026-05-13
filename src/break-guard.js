@@ -9,7 +9,6 @@ export const DEFAULT_CONFIG = Object.freeze({
   breakDurationMs: 5 * 60 * 1000,
   idleRestThresholdMs: 5 * 60 * 1000,
   minRestChunkMs: 60 * 1000,
-  emergencySkipDurationMs: 2 * 60 * 1000,
 });
 
 export const EMERGENCY_PROMPT = "BREAK_GUARD_EMERGENCY";
@@ -21,13 +20,6 @@ export function decidePrompt({
   config = DEFAULT_CONFIG,
 }) {
   const safeState = state ?? {};
-  if (
-    Number.isFinite(safeState.skipBreakUntilMs) &&
-    nowMs < safeState.skipBreakUntilMs
-  ) {
-    return allowWithState(safeState);
-  }
-
   const breakStartedAtMs = getBreakStartedAtMs(safeState, config);
 
   if (Number.isFinite(breakStartedAtMs)) {
@@ -226,7 +218,6 @@ export async function runUserPromptSubmitHook({
     const result = activateEmergencyOverride({
       nowMs,
       state,
-      config,
     });
     await writeState(statePath, result.state);
     notifyUser(result.reason);
@@ -266,17 +257,19 @@ export async function runUserPromptSubmitHook({
   };
 }
 
-function activateEmergencyOverride({ nowMs, state, config }) {
-  const skipBreakUntilMs = nowMs + config.emergencySkipDurationMs;
+function activateEmergencyOverride({ nowMs, state }) {
   return {
-    reason: `已开启紧急跳过，未来 ${formatRemaining(config.emergencySkipDurationMs)}内不会强制休息。`,
+    reason: "已开启紧急跳过，已重新开始下一轮工作计时。",
     state: stripUndefined({
       ...state,
       workStartedAtMs: nowMs,
       breakStartedAtMs: undefined,
       breakUntilMs: undefined,
       restCompletedAtMs: undefined,
-      skipBreakUntilMs,
+      restAccumulatedMs: undefined,
+      lastIdleObservedMs: undefined,
+      lastCountedIdleMs: undefined,
+      skipBreakUntilMs: undefined,
     }),
   };
 }

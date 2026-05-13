@@ -145,34 +145,6 @@ test("stale rest completion before the current break does not allow the prompt",
   assert.equal(result.state.restCompletedAtMs, 29 * MINUTE);
 });
 
-test("active emergency override allows prompts until it expires", () => {
-  const result = decidePrompt({
-    nowMs: 31 * MINUTE,
-    idleMs: 0,
-    state: {
-      workStartedAtMs: 31 * MINUTE,
-      skipBreakUntilMs: 32 * MINUTE,
-    },
-  });
-
-  assert.equal(result.decision, "allow");
-  assert.equal(result.state.skipBreakUntilMs, 32 * MINUTE);
-});
-
-test("expired emergency override resumes the fresh work cycle instead of old break", () => {
-  const result = decidePrompt({
-    nowMs: 32 * MINUTE + 30 * 1000,
-    idleMs: 0,
-    state: {
-      workStartedAtMs: 31 * MINUTE,
-      skipBreakUntilMs: 32 * MINUTE,
-    },
-  });
-
-  assert.equal(result.decision, "allow");
-  assert.equal(result.state.workStartedAtMs, 31 * MINUTE);
-});
-
 test("runMonitorTick records completed rest during an active break", async () => {
   const dir = await mkdtemp(join(tmpdir(), "break-guard-monitor-"));
   const statePath = join(dir, "state.json");
@@ -314,7 +286,7 @@ test("monitor accumulates only rest chunks of at least one minute during break",
   }
 });
 
-test("emergency command sets a two minute override and returns a visible hook response", async () => {
+test("emergency command skips the current break and starts a fresh work cycle", async () => {
   const dir = await mkdtemp(join(tmpdir(), "break-guard-"));
   const statePath = join(dir, "state.json");
   const notifications = [];
@@ -346,14 +318,12 @@ test("emergency command sets a two minute override and returns a visible hook re
     assert.equal(output.decision, "block");
     assert.match(output.reason, /已开启紧急跳过/);
     assert.equal(result.stderr, "");
-    assert.deepEqual(notifications, [
-      "已开启紧急跳过，未来 2 分钟内不会强制休息。",
-    ]);
+    assert.deepEqual(notifications, ["已开启紧急跳过，已重新开始下一轮工作计时。"]);
     assert.equal(state.workStartedAtMs, 31 * MINUTE);
     assert.equal(state.breakStartedAtMs, undefined);
     assert.equal(state.breakUntilMs, undefined);
     assert.equal(state.restCompletedAtMs, undefined);
-    assert.equal(state.skipBreakUntilMs, 33 * MINUTE);
+    assert.equal(state.skipBreakUntilMs, undefined);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
