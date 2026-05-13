@@ -1,12 +1,31 @@
 # Claude Code Break Guard
 
-Claude Code 强制休息工具。工作到设定时间后，Claude Code 会停止回答，直到 macOS 检测到你真的连续空闲了指定休息时间。
+Claude Code 强制休息工具。工作到设定时间后，Claude Code 会停止回答，直到 macOS 检测到你真的休息够了。
 
 它不是简单倒计时，而是通过 macOS `HIDIdleTime` 检测键盘、鼠标、触控板是否持续没有操作。移动鼠标、点击、打字、触控板滚动都会打断当前空闲片段。
 
-休息期间会累计有效空闲片段；每段空闲至少 `1` 分钟才计入累计。比如休息要求是 `5` 分钟，已经有效空闲 `4` 分钟后回来问 Claude Code，它会提示还需要休息 `1` 分钟，而不是重新休息 `5` 分钟。
+## 亮点
+
+- **真实休息检测**：只有电脑真的空闲时才计入休息。
+- **有效休息累计**：休息期间会累计有效空闲片段，每段空闲至少 `1` 分钟才计入累计。
+- **工作中提前休息**：如果你在工作时间内已经完整空闲够休息时间，下一轮工作会从这次休息结束后重新开始计算。
+- **Claude Code 强制拦截**：休息未完成时，Claude Code 不会继续回答。
+- **Mac 通知提醒**：休息未完成时会弹出系统通知。
+- **紧急跳过**：输入 `BREAK_GUARD_EMERGENCY` 可以临时跳过当前休息约束。
+
+## 快速开始
+
+```bash
+git clone https://github.com/yhurrima/claude-code-break-guard.git
+cd claude-code-break-guard
+node scripts/install.js
+```
+
+默认配置是工作 `25` 分钟，休息 `5` 分钟。
 
 ## 安装
+
+### 方式 1：手动安装
 
 ```bash
 git clone https://github.com/yhurrima/claude-code-break-guard.git
@@ -21,7 +40,7 @@ node scripts/install.js --work 25m --rest 5m
 - 写入 `~/.claude/break-guard/config.json`
 - 创建并启动 macOS LaunchAgent monitor
 
-## Skill 安装方式
+### 方式 2：让 Claude Code 安装
 
 告诉 Claude Code：
 
@@ -29,65 +48,85 @@ node scripts/install.js --work 25m --rest 5m
 帮我安装这个技能：https://github.com/yhurrima/claude-code-break-guard/tree/main/skills/claude-code-break-guard
 ```
 
-## 修改时间
+安装技能后，可以继续用自然语言让 Claude Code 帮你安装、修改工作时间、修改休息时间、暂停、恢复或卸载。
 
-重新运行安装命令即可覆盖配置：
+## 使用方式
+
+### 修改时间
+
+重新运行安装脚本即可修改工作和休息时间：
 
 ```bash
-node scripts/install.js --work 50m --rest 10m
+node scripts/install.js --work 30m --rest 5m
 ```
 
-支持单位：`ms`、`s`、`m`、`h`。
+时间支持：
 
-## 紧急跳过
+- `30s`
+- `25m`
+- `1h`
 
-在 Claude Code 里输入：
+### 紧急跳过
+
+如果确实有紧急情况，在 Claude Code 里单独发送：
 
 ```text
 BREAK_GUARD_EMERGENCY
 ```
 
-当前会跳过本次休息，重新开始工作计时，并临时关闭强制休息 `2` 分钟。
+默认会临时跳过 `2` 分钟。正式使用时可以在 `config.json` 里把 `emergencySkipDurationMs` 改成你需要的时长。
 
-## 工作中提前休息
-
-如果工作期间已经完整空闲满休息时长，也会视为已经休息过，并重置工作计时。
-
-例如设置为工作 `30` 分钟、休息 `5` 分钟：如果你在第 `15` 到第 `20` 分钟真实空闲了 `5` 分钟，下一次强制休息会从第 `20` 分钟重新计算，而不是仍然在第 `30` 分钟触发。
-
-## 查看状态
+### 查看状态
 
 ```bash
-jq '.hooks.UserPromptSubmit' ~/.claude/settings.json
-launchctl print gui/$(id -u)/com.yhurri.claude-code-break-guard.monitor
-jq '.' ~/.claude/break-guard/state.json ~/.claude/break-guard/config.json
+cat ~/.claude/break-guard/state.json
 ```
 
-## 卸载
-
-停用但保留配置：
+### 卸载
 
 ```bash
 node scripts/uninstall.js
 ```
 
-彻底删除配置和状态：
+如果要同时删除配置和状态：
 
 ```bash
 node scripts/uninstall.js --remove-config
 ```
+
+## 工作流程
+
+```text
+开始工作
+  |
+  v
+后台 monitor 持续检测电脑空闲时间
+  |
+  v
+达到工作时长
+  |
+  v
+Claude Code hook 拦截新 prompt
+  |
+  v
+检查是否已经累计足够有效休息
+  |
+  +-- 是 --> 放行并重新开始工作计时
+  |
+  +-- 否 --> 阻止回复，并提示还需要休息多久
+```
+
+## 前置依赖
+
+- macOS
+- Node.js `20` 或更高版本
+- Claude Code
 
 ## 测试
 
 ```bash
 npm test
 ```
-
-## 依赖
-
-- macOS
-- Claude Code hooks
-- Node.js `>=20`
 
 ## License
 
