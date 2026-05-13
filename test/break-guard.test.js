@@ -351,7 +351,7 @@ test("active break message is based on required idle time instead of stale break
   });
 
   assert.equal(result.decision, "block");
-  assert.match(result.reason, /还需要真实空闲 30 秒/);
+  assert.match(result.reason, /还需要真实空闲 1 分钟/);
 });
 
 test("parseMacIdleMs parses HIDIdleTime nanoseconds from ioreg output", () => {

@@ -52,7 +52,7 @@ node scripts/install.js --work 25m --rest 5m
 
 ## 使用方式
 
-### 修改时间
+1. 修改时间
 
 重新运行安装脚本即可修改工作和休息时间：
 
@@ -66,7 +66,7 @@ node scripts/install.js --work 30m --rest 5m
 - `25m`
 - `1h`
 
-### 紧急跳过
+2. 紧急跳过
 
 如果确实有紧急情况，在 Claude Code 里单独发送：
 
@@ -76,13 +76,13 @@ BREAK_GUARD_EMERGENCY
 
 这会跳过当前这次休息，并从发送指令的时间点开始重新计算下一轮工作时间。
 
-### 查看状态
+3. 查看状态
 
 ```bash
 cat ~/.claude/break-guard/state.json
 ```
 
-### 卸载
+4. 卸载
 
 ```bash
 node scripts/uninstall.js

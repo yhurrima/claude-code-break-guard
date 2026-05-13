@@ -311,17 +311,8 @@ function blockWithRequiredIdle(state, remainingIdleMs) {
 }
 
 function formatPreciseRemaining(remainingMs) {
-  const seconds = Math.max(1, Math.ceil(remainingMs / 1_000));
-  if (seconds < 60) {
-    return `${seconds} 秒`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const restSeconds = seconds % 60;
-  if (restSeconds === 0) {
-    return `${minutes} 分钟`;
-  }
-  return `${minutes} 分 ${restSeconds} 秒`;
+  const minutes = Math.max(1, Math.ceil(remainingMs / 60_000));
+  return `${minutes} 分钟`;
 }
 
 function stripUndefined(value) {
