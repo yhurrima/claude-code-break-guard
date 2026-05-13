@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/yhurri/Desktop/Codex_workfile/tasks/claude-code-break-guard/src/break-guard.js"
+          }
+        ]
+      }
+    ]
+  }
+}
