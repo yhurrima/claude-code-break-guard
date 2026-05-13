@@ -209,6 +209,111 @@ test("runMonitorTick records completed rest during an active break", async () =>
   }
 });
 
+test("monitor resets work timer when full rest happens during work time", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "break-guard-monitor-"));
+  const statePath = join(dir, "state.json");
+  const configPath = join(dir, "config.json");
+
+  try {
+    await writeFile(
+      statePath,
+      `${JSON.stringify({
+        workStartedAtMs: 0,
+      })}\n`,
+    );
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        workDurationMs: 30 * MINUTE,
+        breakDurationMs: 5 * MINUTE,
+        idleRestThresholdMs: 5 * MINUTE,
+      })}\n`,
+    );
+
+    const result = await runMonitorTick({
+      statePath,
+      configPath,
+      nowMs: 20 * MINUTE,
+      getIdleMs: () => 5 * MINUTE,
+    });
+
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(result.recorded, true);
+    assert.equal(state.workStartedAtMs, 20 * MINUTE);
+    assert.equal(state.breakStartedAtMs, undefined);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("monitor accumulates only rest chunks of at least one minute during break", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "break-guard-monitor-"));
+  const statePath = join(dir, "state.json");
+  const configPath = join(dir, "config.json");
+
+  try {
+    await writeFile(
+      statePath,
+      `${JSON.stringify({
+        workStartedAtMs: 0,
+        breakStartedAtMs: 30 * MINUTE,
+        breakUntilMs: 35 * MINUTE,
+      })}\n`,
+    );
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        idleRestThresholdMs: 5 * MINUTE,
+      })}\n`,
+    );
+
+    await runMonitorTick({
+      statePath,
+      configPath,
+      nowMs: 31 * MINUTE,
+      getIdleMs: () => 30 * 1000,
+    });
+    let state = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(state.restAccumulatedMs, undefined);
+
+    await runMonitorTick({
+      statePath,
+      configPath,
+      nowMs: 34 * MINUTE,
+      getIdleMs: () => 4 * MINUTE,
+    });
+    state = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(state.restAccumulatedMs, 4 * MINUTE);
+    assert.equal(state.restCompletedAtMs, undefined);
+
+    const blocked = decidePrompt({
+      nowMs: 34 * MINUTE + 10 * 1000,
+      idleMs: 0,
+      state,
+      config: {
+        workDurationMs: 30 * MINUTE,
+        breakDurationMs: 5 * MINUTE,
+        idleRestThresholdMs: 5 * MINUTE,
+      },
+    });
+    assert.equal(blocked.decision, "block");
+    assert.match(blocked.reason, /还需要真实空闲 1 分钟/);
+
+    await writeFile(statePath, `${JSON.stringify(blocked.state, null, 2)}\n`);
+    await runMonitorTick({
+      statePath,
+      configPath,
+      nowMs: 35 * MINUTE + 10 * 1000,
+      getIdleMs: () => MINUTE,
+    });
+    state = JSON.parse(await readFile(statePath, "utf8"));
+    assert.equal(state.restAccumulatedMs, 5 * MINUTE);
+    assert.equal(state.restCompletedAtMs, 35 * MINUTE + 10 * 1000);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("emergency command sets a two minute override and returns a visible hook response", async () => {
   const dir = await mkdtemp(join(tmpdir(), "break-guard-"));
   const statePath = join(dir, "state.json");

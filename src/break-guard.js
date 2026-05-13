@@ -8,6 +8,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   workDurationMs: 30 * 60 * 1000,
   breakDurationMs: 5 * 60 * 1000,
   idleRestThresholdMs: 5 * 60 * 1000,
+  minRestChunkMs: 60 * 1000,
   emergencySkipDurationMs: 2 * 60 * 1000,
 });
 
@@ -44,10 +45,12 @@ export function decidePrompt({
       });
     }
 
-    return blockWithRequiredIdle(
-      safeState,
-      Math.max(1, config.idleRestThresholdMs - idleMs),
-    );
+    const remainingRestMs = getRemainingRestMs({
+      idleMs,
+      state: safeState,
+      config,
+    });
+    return blockWithRequiredIdle(safeState, remainingRestMs);
   }
 
   if (idleMs >= config.idleRestThresholdMs) {
@@ -140,6 +143,23 @@ export function recordRestCompletion({
   const safeState = state ?? {};
   const breakStartedAtMs = getBreakStartedAtMs(safeState, config);
   if (!Number.isFinite(breakStartedAtMs)) {
+    if (
+      Number.isFinite(safeState.workStartedAtMs) &&
+      idleMs >= config.idleRestThresholdMs
+    ) {
+      return {
+        recorded: true,
+        state: stripUndefined({
+          ...safeState,
+          workStartedAtMs: nowMs,
+          restAccumulatedMs: undefined,
+          lastIdleObservedMs: undefined,
+          lastCountedIdleMs: undefined,
+          restCompletedAtMs: undefined,
+        }),
+      };
+    }
+
     return {
       recorded: false,
       state: safeState,
@@ -156,10 +176,26 @@ export function recordRestCompletion({
     };
   }
 
-  if (idleMs < config.idleRestThresholdMs) {
+  const restAccumulatedMs = getRestAccumulatedMs({
+    idleMs,
+    state: safeState,
+    config,
+  });
+
+  if (restAccumulatedMs < config.idleRestThresholdMs) {
     return {
-      recorded: false,
-      state: safeState,
+      recorded: restAccumulatedMs !== (safeState.restAccumulatedMs ?? 0),
+      state: stripUndefined({
+        ...safeState,
+        restAccumulatedMs: restAccumulatedMs > 0 ? restAccumulatedMs : undefined,
+        lastIdleObservedMs: idleMs,
+        lastCountedIdleMs: getLastCountedIdleMs({
+          idleMs,
+          restAccumulatedMs,
+          state: safeState,
+          config,
+        }),
+      }),
     };
   }
 
@@ -167,6 +203,9 @@ export function recordRestCompletion({
     recorded: true,
     state: stripUndefined({
       ...safeState,
+      restAccumulatedMs,
+      lastIdleObservedMs: idleMs,
+      lastCountedIdleMs: idleMs,
       restCompletedAtMs: nowMs,
     }),
   };
@@ -249,6 +288,9 @@ function allowWithFreshTimer(nowMs, state) {
     breakStartedAtMs: undefined,
     breakUntilMs: undefined,
     restCompletedAtMs: undefined,
+    restAccumulatedMs: undefined,
+    lastIdleObservedMs: undefined,
+    lastCountedIdleMs: undefined,
   });
 }
 
@@ -319,6 +361,42 @@ function getBreakStartedAtMs(state, config) {
     return state.breakUntilMs - config.breakDurationMs;
   }
   return undefined;
+}
+
+function getRemainingRestMs({ idleMs, state, config }) {
+  const restAccumulatedMs = getRestAccumulatedMs({
+    idleMs,
+    state,
+    config,
+  });
+  return Math.max(1, config.idleRestThresholdMs - restAccumulatedMs);
+}
+
+function getRestAccumulatedMs({ idleMs, state, config }) {
+  const existing = state.restAccumulatedMs ?? 0;
+  const lastCountedIdleMs = state.lastCountedIdleMs ?? 0;
+
+  if (idleMs < config.minRestChunkMs) {
+    return existing;
+  }
+
+  if (idleMs < lastCountedIdleMs) {
+    return existing + idleMs;
+  }
+
+  return existing + Math.max(0, idleMs - lastCountedIdleMs);
+}
+
+function getLastCountedIdleMs({ idleMs, restAccumulatedMs, state, config }) {
+  if (idleMs < config.minRestChunkMs) {
+    return undefined;
+  }
+
+  if (restAccumulatedMs <= (state.restAccumulatedMs ?? 0)) {
+    return state.lastCountedIdleMs;
+  }
+
+  return idleMs;
 }
 
 async function main() {

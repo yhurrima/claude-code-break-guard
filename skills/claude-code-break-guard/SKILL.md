@@ -11,6 +11,7 @@ Use this skill to manage Claude Code Break Guard through natural language while 
 
 - Default work duration: `25m`
 - Default required real rest duration: `5m`
+- Effective rest chunks must be at least `1m` before they count toward accumulated break rest.
 - Do not ask normal users about `monitorIntervalMs`; it is an implementation detail.
 - Emergency skip command: `BREAK_GUARD_EMERGENCY`
 
@@ -133,6 +134,13 @@ Key state fields:
 - `skipBreakUntilMs`: emergency skip expiry.
 
 If a prompt is blocked after the user says they rested, check whether `restCompletedAtMs >= breakStartedAtMs`. If not, explain that the monitor did not observe enough continuous macOS idle time.
+
+Rest semantics:
+
+- During an active break, effective idle chunks are accumulated.
+- Idle chunks shorter than `minRestChunkMs` do not count.
+- Default `minRestChunkMs` is `1m`.
+- During work time, a full idle rest equal to `idleRestThresholdMs` resets the work timer.
 
 ## Safety
 

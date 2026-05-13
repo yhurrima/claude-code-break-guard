@@ -3,6 +3,7 @@
   "workDurationMs": 1500000,
   "breakDurationMs": 300000,
   "idleRestThresholdMs": 300000,
+  "minRestChunkMs": 60000,
   "monitorIntervalMs": 5000,
   "emergencySkipDurationMs": 120000
 }
