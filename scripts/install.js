@@ -68,6 +68,7 @@ export async function installBreakGuard({
   workDurationMs = DEFAULT_CONFIG.workDurationMs,
   restDurationMs = DEFAULT_CONFIG.idleRestThresholdMs,
   monitorIntervalMs = 5_000,
+  mode = DEFAULT_CONFIG.mode,
   backupName,
   runCommand = runCommandSync,
 }) {
@@ -81,6 +82,7 @@ export async function installBreakGuard({
 
   await writeConfig(configPath, {
     ...DEFAULT_CONFIG,
+    mode,
     workDurationMs,
     breakDurationMs: restDurationMs,
     idleRestThresholdMs: restDurationMs,
@@ -232,6 +234,8 @@ function parseArgs(argv) {
       options.restDurationMs = parseDurationMs(argv[++index]);
     } else if (entry === "--monitor-interval") {
       options.monitorIntervalMs = parseDurationMs(argv[++index]);
+    } else if (entry === "--mode") {
+      options.mode = argv[++index];
     }
   }
   return options;

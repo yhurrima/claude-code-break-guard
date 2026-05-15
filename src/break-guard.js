@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url";
 
 export const DEFAULT_CONFIG = Object.freeze({
   mode: "strict",
-  workDurationMs: 30 * 60 * 1000,
-  breakDurationMs: 5 * 60 * 1000,
-  idleRestThresholdMs: 5 * 60 * 1000,
+  workDurationMs: 25 * 60 * 1000,
+  breakDurationMs: 3 * 60 * 1000,
+  idleRestThresholdMs: 3 * 60 * 1000,
   minRestChunkMs: 60 * 1000,
 });
 
@@ -42,6 +42,9 @@ export function decidePrompt({
       state: safeState,
       config,
     });
+    if (config.mode === "gentle") {
+      return warnWithRequiredIdle(safeState, remainingRestMs);
+    }
     return blockWithRequiredIdle(safeState, remainingRestMs);
   }
 
@@ -60,14 +63,15 @@ export function decidePrompt({
   const workedMs = nowMs - safeState.workStartedAtMs;
   if (workedMs >= config.workDurationMs) {
     const breakUntilMs = nowMs + config.breakDurationMs;
-    return blockWithRemaining(
-      {
-        ...safeState,
-        breakStartedAtMs: nowMs,
-        breakUntilMs,
-      },
-      config.breakDurationMs,
-    );
+    const breakState = {
+      ...safeState,
+      breakStartedAtMs: nowMs,
+      breakUntilMs,
+    };
+    if (config.mode === "gentle") {
+      return warnWithRemaining(breakState, config.breakDurationMs);
+    }
+    return blockWithRemaining(breakState, config.breakDurationMs);
   }
 
   return allowWithState(safeState);
@@ -250,6 +254,10 @@ export async function runUserPromptSubmitHook({
     };
   }
 
+  if (result.decision === "warn") {
+    notifyUser(result.reason);
+  }
+
   return {
     exitCode: 0,
     stdout: "",
@@ -298,6 +306,22 @@ function blockWithRemaining(state, remainingMs) {
   return {
     decision: "block",
     reason: `强制休息中，还剩 ${formatRemaining(remainingMs)}。请离开电脑休息一下。`,
+    state: stripUndefined(state),
+  };
+}
+
+function warnWithRemaining(state, remainingMs) {
+  return {
+    decision: "warn",
+    reason: `你已经工作超过时间了，建议休息 ${formatRemaining(remainingMs)}。`,
+    state: stripUndefined(state),
+  };
+}
+
+function warnWithRequiredIdle(state, remainingIdleMs) {
+  return {
+    decision: "warn",
+    reason: `建议休息，还需要真实空闲 ${formatPreciseRemaining(remainingIdleMs)}。`,
     state: stripUndefined(state),
   };
 }

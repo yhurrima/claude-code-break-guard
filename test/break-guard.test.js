@@ -29,7 +29,7 @@ test("first prompt starts the global work timer and allows the prompt", () => {
 
 test("prompt before the work limit is allowed", () => {
   const result = decidePrompt({
-    nowMs: 29 * MINUTE,
+    nowMs: 30 * 1000,
     idleMs: 0,
     state: { workStartedAtMs: 0 },
   });
@@ -40,90 +40,90 @@ test("prompt before the work limit is allowed", () => {
 
 test("prompt after the work limit starts a break and blocks the prompt", () => {
   const result = decidePrompt({
-    nowMs: 30 * MINUTE + 1,
+    nowMs: 25 * MINUTE + 1,
     idleMs: 60 * 1000,
     state: { workStartedAtMs: 0 },
   });
 
   assert.equal(result.decision, "block");
-  assert.equal(result.state.breakUntilMs, 35 * MINUTE + 1);
+  assert.equal(result.state.breakUntilMs, 28 * MINUTE + 1);
   assert.match(result.reason, /强制休息中/);
 });
 
 test("prompt during an active break stays blocked with required idle time", () => {
   const result = decidePrompt({
-    nowMs: 32 * MINUTE,
+    nowMs: 26 * MINUTE,
     idleMs: 0,
     state: {
       workStartedAtMs: 0,
-      breakUntilMs: 35 * MINUTE,
+      breakUntilMs: 28 * MINUTE,
     },
   });
 
   assert.equal(result.decision, "block");
-  assert.match(result.reason, /还需要真实空闲 5 分钟/);
+  assert.match(result.reason, /还需要真实空闲 3 分钟/);
 });
 
 test("enough system idle time counts as rest and resets the work timer", () => {
   const result = decidePrompt({
-    nowMs: 31 * MINUTE,
+    nowMs: 26 * MINUTE,
     idleMs: 5 * MINUTE,
     state: { workStartedAtMs: 0 },
   });
 
   assert.equal(result.decision, "allow");
-  assert.equal(result.state.workStartedAtMs, 31 * MINUTE);
+  assert.equal(result.state.workStartedAtMs, 26 * MINUTE);
   assert.equal(result.state.breakUntilMs, undefined);
 });
 
 test("expired break still blocks when system idle time is too short", () => {
   const result = decidePrompt({
-    nowMs: 36 * MINUTE,
+    nowMs: 29 * MINUTE,
     idleMs: 0,
     state: {
       workStartedAtMs: 0,
-      breakStartedAtMs: 30 * MINUTE,
-      breakUntilMs: 35 * MINUTE,
+      breakStartedAtMs: 25 * MINUTE,
+      breakUntilMs: 28 * MINUTE,
     },
   });
 
   assert.equal(result.decision, "block");
   assert.equal(result.state.workStartedAtMs, 0);
-  assert.equal(result.state.breakUntilMs, 35 * MINUTE);
+  assert.equal(result.state.breakUntilMs, 28 * MINUTE);
   assert.match(result.reason, /强制休息中/);
 });
 
 test("active break allows only after enough real system idle time", () => {
   const result = decidePrompt({
-    nowMs: 36 * MINUTE,
+    nowMs: 29 * MINUTE,
     idleMs: 5 * MINUTE,
     state: {
       workStartedAtMs: 0,
-      breakStartedAtMs: 30 * MINUTE,
-      breakUntilMs: 35 * MINUTE,
+      breakStartedAtMs: 25 * MINUTE,
+      breakUntilMs: 28 * MINUTE,
     },
   });
 
   assert.equal(result.decision, "allow");
-  assert.equal(result.state.workStartedAtMs, 36 * MINUTE);
+  assert.equal(result.state.workStartedAtMs, 29 * MINUTE);
   assert.equal(result.state.breakStartedAtMs, undefined);
   assert.equal(result.state.breakUntilMs, undefined);
 });
 
 test("recorded rest completion allows the next prompt even when typing resets idle", () => {
   const result = decidePrompt({
-    nowMs: 36 * MINUTE,
+    nowMs: 29 * MINUTE,
     idleMs: 0,
     state: {
       workStartedAtMs: 0,
-      breakStartedAtMs: 30 * MINUTE,
-      breakUntilMs: 35 * MINUTE,
-      restCompletedAtMs: 34 * MINUTE,
+      breakStartedAtMs: 25 * MINUTE,
+      breakUntilMs: 28 * MINUTE,
+      restCompletedAtMs: 27 * MINUTE,
     },
   });
 
   assert.equal(result.decision, "allow");
-  assert.equal(result.state.workStartedAtMs, 36 * MINUTE);
+  assert.equal(result.state.workStartedAtMs, 29 * MINUTE);
   assert.equal(result.state.breakStartedAtMs, undefined);
   assert.equal(result.state.breakUntilMs, undefined);
   assert.equal(result.state.restCompletedAtMs, undefined);
@@ -131,18 +131,18 @@ test("recorded rest completion allows the next prompt even when typing resets id
 
 test("stale rest completion before the current break does not allow the prompt", () => {
   const result = decidePrompt({
-    nowMs: 36 * MINUTE,
+    nowMs: 29 * MINUTE,
     idleMs: 0,
     state: {
       workStartedAtMs: 0,
-      breakStartedAtMs: 30 * MINUTE,
-      breakUntilMs: 35 * MINUTE,
-      restCompletedAtMs: 29 * MINUTE,
+      breakStartedAtMs: 25 * MINUTE,
+      breakUntilMs: 28 * MINUTE,
+      restCompletedAtMs: 24 * MINUTE,
     },
   });
 
   assert.equal(result.decision, "block");
-  assert.equal(result.state.restCompletedAtMs, 29 * MINUTE);
+  assert.equal(result.state.restCompletedAtMs, 24 * MINUTE);
 });
 
 test("runMonitorTick records completed rest during an active break", async () => {
@@ -155,8 +155,8 @@ test("runMonitorTick records completed rest during an active break", async () =>
       statePath,
       `${JSON.stringify({
         workStartedAtMs: 0,
-        breakStartedAtMs: 30 * MINUTE,
-        breakUntilMs: 35 * MINUTE,
+        breakStartedAtMs: 1 * MINUTE,
+        breakUntilMs: 6 * MINUTE,
       })}\n`,
     );
     await writeFile(
@@ -169,13 +169,13 @@ test("runMonitorTick records completed rest during an active break", async () =>
     const result = await runMonitorTick({
       statePath,
       configPath,
-      nowMs: 34 * MINUTE,
+      nowMs: 5 * MINUTE,
       getIdleMs: () => MINUTE,
     });
 
     const state = JSON.parse(await readFile(statePath, "utf8"));
     assert.equal(result.recorded, true);
-    assert.equal(state.restCompletedAtMs, 34 * MINUTE);
+    assert.equal(state.restCompletedAtMs, 5 * MINUTE);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -196,7 +196,7 @@ test("monitor resets work timer when full rest happens during work time", async 
     await writeFile(
       configPath,
       `${JSON.stringify({
-        workDurationMs: 30 * MINUTE,
+        workDurationMs: 1 * MINUTE,
         breakDurationMs: 5 * MINUTE,
         idleRestThresholdMs: 5 * MINUTE,
       })}\n`,
@@ -205,13 +205,13 @@ test("monitor resets work timer when full rest happens during work time", async 
     const result = await runMonitorTick({
       statePath,
       configPath,
-      nowMs: 20 * MINUTE,
+      nowMs: 30 * 1000,
       getIdleMs: () => 5 * MINUTE,
     });
 
     const state = JSON.parse(await readFile(statePath, "utf8"));
     assert.equal(result.recorded, true);
-    assert.equal(state.workStartedAtMs, 20 * MINUTE);
+    assert.equal(state.workStartedAtMs, 30 * 1000);
     assert.equal(state.breakStartedAtMs, undefined);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -228,8 +228,8 @@ test("monitor accumulates only rest chunks of at least one minute during break",
       statePath,
       `${JSON.stringify({
         workStartedAtMs: 0,
-        breakStartedAtMs: 30 * MINUTE,
-        breakUntilMs: 35 * MINUTE,
+        breakStartedAtMs: 1 * MINUTE,
+        breakUntilMs: 6 * MINUTE,
       })}\n`,
     );
     await writeFile(
@@ -242,7 +242,7 @@ test("monitor accumulates only rest chunks of at least one minute during break",
     await runMonitorTick({
       statePath,
       configPath,
-      nowMs: 31 * MINUTE,
+      nowMs: 2 * MINUTE,
       getIdleMs: () => 30 * 1000,
     });
     let state = JSON.parse(await readFile(statePath, "utf8"));
@@ -251,7 +251,7 @@ test("monitor accumulates only rest chunks of at least one minute during break",
     await runMonitorTick({
       statePath,
       configPath,
-      nowMs: 34 * MINUTE,
+      nowMs: 5 * MINUTE,
       getIdleMs: () => 4 * MINUTE,
     });
     state = JSON.parse(await readFile(statePath, "utf8"));
@@ -259,11 +259,11 @@ test("monitor accumulates only rest chunks of at least one minute during break",
     assert.equal(state.restCompletedAtMs, undefined);
 
     const blocked = decidePrompt({
-      nowMs: 34 * MINUTE + 10 * 1000,
+      nowMs: 5 * MINUTE + 10 * 1000,
       idleMs: 0,
       state,
       config: {
-        workDurationMs: 30 * MINUTE,
+        workDurationMs: 1 * MINUTE,
         breakDurationMs: 5 * MINUTE,
         idleRestThresholdMs: 5 * MINUTE,
       },
@@ -275,12 +275,12 @@ test("monitor accumulates only rest chunks of at least one minute during break",
     await runMonitorTick({
       statePath,
       configPath,
-      nowMs: 35 * MINUTE + 10 * 1000,
+      nowMs: 6 * MINUTE + 10 * 1000,
       getIdleMs: () => MINUTE,
     });
     state = JSON.parse(await readFile(statePath, "utf8"));
     assert.equal(state.restAccumulatedMs, 5 * MINUTE);
-    assert.equal(state.restCompletedAtMs, 35 * MINUTE + 10 * 1000);
+    assert.equal(state.restCompletedAtMs, 6 * MINUTE + 10 * 1000);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -296,8 +296,8 @@ test("emergency command skips the current break and starts a fresh work cycle", 
       statePath,
       `${JSON.stringify({
         workStartedAtMs: 0,
-        breakStartedAtMs: 30 * MINUTE,
-        breakUntilMs: 35 * MINUTE,
+        breakStartedAtMs: 1 * MINUTE,
+        breakUntilMs: 6 * MINUTE,
       })}\n`,
     );
 
@@ -307,7 +307,7 @@ test("emergency command skips the current break and starts a fresh work cycle", 
         prompt: EMERGENCY_PROMPT,
       }),
       statePath,
-      nowMs: 31 * MINUTE,
+      nowMs: 2 * MINUTE,
       getIdleMs: () => 0,
       notifyUser: (message) => notifications.push(message),
     });
@@ -319,7 +319,7 @@ test("emergency command skips the current break and starts a fresh work cycle", 
     assert.match(output.reason, /已开启紧急跳过/);
     assert.equal(result.stderr, "");
     assert.deepEqual(notifications, ["已开启紧急跳过，已重新开始下一轮工作计时。"]);
-    assert.equal(state.workStartedAtMs, 31 * MINUTE);
+    assert.equal(state.workStartedAtMs, 2 * MINUTE);
     assert.equal(state.breakStartedAtMs, undefined);
     assert.equal(state.breakUntilMs, undefined);
     assert.equal(state.restCompletedAtMs, undefined);
@@ -405,10 +405,10 @@ test("runUserPromptSubmitHook blocks with visible stderr, notifies, and persists
     const result = await runUserPromptSubmitHook({
       stdinText: JSON.stringify({
         hook_event_name: "UserPromptSubmit",
-        prompt: "after 30 minutes",
+        prompt: "after 25 minutes",
       }),
       statePath,
-      nowMs: 30 * MINUTE + 1,
+      nowMs: 25 * MINUTE + 1,
       getIdleMs: () => 0,
       notifyUser: (message) => notifications.push(message),
     });
@@ -418,9 +418,9 @@ test("runUserPromptSubmitHook blocks with visible stderr, notifies, and persists
     assert.equal(result.stdout, "");
     assert.match(result.stderr, /强制休息中/);
     assert.deepEqual(notifications, [
-      "强制休息中，还剩 5 分钟。请离开电脑休息一下。",
+      "强制休息中，还剩 3 分钟。请离开电脑休息一下。",
     ]);
-    assert.equal(state.breakUntilMs, 35 * MINUTE + 1);
+    assert.equal(state.breakUntilMs, 28 * MINUTE + 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -442,7 +442,7 @@ test("loadConfig merges config file values with defaults", async () => {
     const config = await loadConfig(configPath);
     assert.equal(config.workDurationMs, 3_000);
     assert.equal(config.breakDurationMs, 2_000);
-    assert.equal(config.idleRestThresholdMs, 5 * MINUTE);
+    assert.equal(config.idleRestThresholdMs, 3 * MINUTE);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Code Break Guard · Four Step Process</title>
+  <style>
+    :root {
+      --bg: #0f151b;
+      --paper: #eee9d8;
+      --ink: #111111;
+      --muted: #3d3d38;
+      --pink: #e760a3;
+      --yellow: #f7c816;
+      --green: #258c4f;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+      letter-spacing: 0;
+      display: grid;
+      place-items: center;
+      padding: clamp(10px, 2vw, 24px);
+    }
+
+    main {
+      width: min(1280px, 100%);
+      aspect-ratio: 16 / 9;
+      min-height: 560px;
+      background: var(--paper);
+      border: 2px solid rgba(17, 17, 17, .2);
+      padding: clamp(28px, 4vw, 62px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .eyebrow {
+      font-family: "Courier New", ui-monospace, monospace;
+      font-size: clamp(12px, 1.1vw, 16px);
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: clamp(24px, 3vw, 42px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(46px, 7vw, 112px);
+      line-height: .9;
+      font-weight: 950;
+      letter-spacing: -0.035em;
+      text-transform: uppercase;
+      max-width: 11ch;
+    }
+
+    .rule {
+      margin: clamp(22px, 3vw, 34px) 0 clamp(40px, 5vw, 68px);
+      border-top: 3px dotted var(--ink);
+      width: 100%;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(16px, 2vw, 26px);
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: clamp(250px, 30vw, 320px);
+      border: 3px solid var(--ink);
+      background: transparent;
+      padding: clamp(18px, 2.2vw, 28px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .step.pink { background: var(--pink); }
+    .step.yellow { background: var(--yellow); }
+    .step.green {
+      background: var(--green);
+      color: #f8f3e4;
+    }
+
+    .step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: calc(clamp(16px, 2vw, 26px) * -1 - 3px);
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 14px solid transparent;
+      border-bottom: 14px solid transparent;
+      border-left: 16px solid var(--ink);
+      z-index: 2;
+    }
+
+    .num {
+      display: block;
+      font-size: clamp(58px, 7vw, 94px);
+      line-height: .82;
+      font-weight: 950;
+      letter-spacing: -0.06em;
+      margin-bottom: clamp(14px, 1.8vw, 20px);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: clamp(18px, 1.9vw, 30px);
+      line-height: .95;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+    }
+
+    p {
+      margin: 0;
+      font-size: clamp(14px, 1.35vw, 18px);
+      line-height: 1.35;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .pink p, .yellow p { color: #222; }
+    .green p { color: #f8f3e4; }
+
+    code {
+      font-family: "Courier New", ui-monospace, monospace;
+      font-size: .88em;
+      font-weight: 900;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        aspect-ratio: auto;
+        min-height: 100vh;
+      }
+      h1 { max-width: 100%; }
+      .steps { grid-template-columns: 1fr; }
+      .step { min-height: 170px; }
+      .step:not(:last-child)::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">How it works</div>
+    <h1>A four-step process.</h1>
+    <div class="rule" aria-hidden="true"></div>
+
+    <section class="steps" aria-label="Claude Code Break Guard 四步流程">
+      <article class="step">
+        <span class="num">01</span>
+        <h2>Install Hook</h2>
+        <p>安装脚本写入 <code>~/.claude/settings.json</code>，把命令挂到 <code>UserPromptSubmit</code>。每次新 prompt 提交前，先进入本地守门逻辑。</p>
+      </article>
+
+      <article class="step pink">
+        <span class="num">02</span>
+        <h2>Intercept Prompt</h2>
+        <p>hook 读取 stdin 里的 prompt，同时读取 <code>config.json</code> 和 <code>state.json</code>。如果工作时间没超，就允许继续。</p>
+      </article>
+
+      <article class="step yellow">
+        <span class="num">03</span>
+        <h2>Verify Idle</h2>
+        <p>通过 <code>ioreg</code> 读取 macOS 的 <code>HIDIdleTime</code>。键鼠触控板有输入，空闲片段就会被打断，不算真实休息。</p>
+      </article>
+
+      <article class="step green">
+        <span class="num">04</span>
+        <h2>Allow / Block</h2>
+        <p>休息达标返回 <code>exit 0</code> 放行；休息不够返回 <code>exit 2</code> 阻断，并提示还需要多少真实空闲时间。</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

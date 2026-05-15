@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Code Break Guard · 工程原理</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #0f151b;
+      --paper: #eee9d8;
+      --ink: #111111;
+      --muted: #3d3d38;
+      --line: #111111;
+      --soft: #e760a3;
+      --branch: #f7c816;
+      --green: #258c4f;
+      --slide-padding: clamp(1rem, 4vw, 4rem);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow-x: hidden; }
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+    body {
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .slide {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: var(--paper);
+    }
+
+    .slide-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      width: min(1180px, calc(100% - clamp(1rem, 4vw, 3rem)));
+      max-height: 100%;
+      overflow: hidden;
+      margin: 0 auto;
+      padding: var(--slide-padding);
+    }
+
+    .top-rule {
+      position: absolute;
+      top: clamp(1.25rem, 3vw, 2.75rem);
+      left: 50%;
+      width: min(1180px, calc(100% - clamp(1.5rem, 5vw, 4rem)));
+      transform: translateX(-50%);
+      border-top: 2px solid var(--line);
+    }
+
+    h1, h2 {
+      font-family: "Noto Serif SC", ui-serif, Georgia, serif;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    h1 { font-size: clamp(3rem, 8vw, 7.4rem); line-height: 0.92; }
+    h2 { font-size: clamp(2.15rem, 5.3vw, 5.25rem); line-height: 1; }
+    p { font-size: clamp(1.05rem, 2vw, 1.55rem); line-height: 1.65; color: var(--muted); }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+      color: var(--ink);
+    }
+
+    .kicker {
+      display: inline-block;
+      margin-bottom: clamp(1rem, 2vw, 1.5rem);
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--line);
+      font-size: clamp(0.75rem, 1vw, 0.9rem);
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .lead {
+      max-width: 42rem;
+      margin-top: clamp(1rem, 2.2vw, 1.8rem);
+    }
+
+    .box-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(0.75rem, 1.5vw, 1.1rem);
+      width: min(100%, 1040px);
+      margin-top: clamp(1.4rem, 3vw, 2.5rem);
+    }
+
+    .card {
+      border: 2px solid var(--line);
+      background: var(--soft);
+      padding: clamp(1rem, 2vw, 1.6rem);
+      min-height: clamp(7rem, 18vh, 11rem);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card:nth-child(even) { background: var(--branch); }
+    .card strong {
+      font-family: "Noto Serif SC", ui-serif, Georgia, serif;
+      font-size: clamp(1.35rem, 2.45vw, 1.95rem);
+      font-weight: 500;
+      line-height: 1.18;
+    }
+    .card span {
+      margin-top: clamp(0.6rem, 1.4vw, 1rem);
+      font-size: clamp(0.9rem, 1.38vw, 1.05rem);
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .stats-slide .card span {
+      white-space: nowrap;
+      font-size: clamp(0.78rem, 1.2vw, 0.95rem);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: clamp(0.65rem, 1.25vw, 0.95rem);
+      width: min(100%, 860px);
+      margin-top: clamp(1rem, 2.2vw, 1.8rem);
+    }
+
+    .stats-grid .card {
+      max-width: none;
+      min-height: clamp(5.2rem, 13vh, 7rem);
+    }
+
+    .hook-board {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: clamp(1rem, 2vw, 1.4rem);
+      margin-top: clamp(1.5rem, 3vw, 2.4rem);
+      width: min(100%, 980px);
+    }
+
+    .hook-line {
+      border: 2px solid var(--line);
+      background: var(--branch);
+      padding: clamp(1rem, 2vw, 1.5rem);
+      display: grid;
+      grid-template-columns: clamp(6.5rem, 16vw, 10rem) 1fr;
+      gap: clamp(0.9rem, 2vw, 1.4rem);
+      align-items: center;
+    }
+
+    .hook-line b {
+      font-family: "Noto Serif SC", ui-serif, Georgia, serif;
+      font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .hook-line span {
+      color: var(--muted);
+      font-size: clamp(1rem, 1.75vw, 1.25rem);
+      line-height: 1.55;
+    }
+
+    .hook-note {
+      border-left: 4px solid var(--line);
+      padding-left: clamp(1rem, 2vw, 1.4rem);
+      margin-top: clamp(1.3rem, 2.4vw, 2rem);
+      max-width: 48rem;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: clamp(1rem, 2.4vw, 2rem);
+      align-items: center;
+      margin-top: clamp(1.4rem, 3vw, 2.2rem);
+    }
+
+    .steps {
+      display: grid;
+      gap: clamp(0.65rem, 1.2vw, 0.9rem);
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr;
+      gap: 1rem;
+      align-items: start;
+      border: 2px solid var(--line);
+      background: var(--branch);
+      padding: clamp(0.85rem, 1.4vw, 1.15rem);
+    }
+
+    .step b {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: clamp(0.8rem, 1.15vw, 0.95rem);
+      letter-spacing: 0.06em;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: clamp(0.92rem, 1.4vw, 1.05rem);
+      line-height: 1.5;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(clamp(0.75rem, 2vw, 1.5rem));
+      transition: opacity 420ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: var(--ink);
+      z-index: 20;
+      transition: width 180ms ease;
+    }
+    .nav-dots {
+      position: fixed;
+      right: clamp(0.8rem, 2vw, 1.6rem);
+      top: 50%;
+      transform: translateY(-50%);
+      display: grid;
+      gap: 0.65rem;
+      z-index: 20;
+    }
+    .nav-dots button {
+      width: 0.65rem;
+      height: 0.65rem;
+      border: 2px solid var(--ink);
+      background: transparent;
+      cursor: pointer;
+    }
+    .nav-dots button.active { background: var(--ink); }
+
+    @media (max-width: 780px) {
+      .box-row, .flow-grid { grid-template-columns: 1fr; }
+      .box-row .card:nth-child(n+3) { display: none; }
+      .flow-grid > p { display: none; }
+      .nav-dots { display: none; }
+    }
+
+    .talk-card {
+      width: min(100%, 900px);
+      margin-top: clamp(1.6rem, 3.5vw, 3rem);
+      border: 3px solid var(--line);
+      padding: clamp(1.3rem, 3vw, 2.3rem);
+      background: var(--soft);
+    }
+
+    .talk-card.yellow { background: var(--branch); }
+    .talk-card.green {
+      background: var(--green);
+      color: #f8f3e4;
+    }
+
+    .talk-card p {
+      max-width: 34rem;
+      color: inherit;
+      font-size: clamp(1.25rem, 2.6vw, 2rem);
+      line-height: 1.45;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="progress-bar" aria-hidden="true"></div>
+  <nav class="nav-dots" aria-label="幻灯片导航"></nav>
+
+  <section class="slide title-slide">
+    <div class="top-rule"></div>
+    <div class="slide-content">
+      <p class="kicker reveal">Claude Code Break Guard</p>
+      <h1 class="reveal">它不是提醒器，<br>是回答权守门员</h1>
+      <div class="talk-card yellow reveal">
+        <p>提交问题之前，先判断：现在还能不能继续工作。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="top-rule"></div>
+    <div class="slide-content">
+      <p class="kicker reveal">01 / What Is Hook</p>
+      <h2 class="reveal">Hook 是什么？</h2>
+      <div class="talk-card reveal">
+        <p>当程序运行到关键点时，提前留一个“检查点”。<br>你可以在这里插入自己的逻辑。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="top-rule"></div>
+    <div class="slide-content">
+      <p class="kicker reveal">02 / Interaction Rule</p>
+      <h2 class="reveal">改变的是交互规则</h2>
+      <div class="talk-card yellow reveal">
+        <p>每次提交 prompt 前，Claude Code 都会先被检查。<br>现在还能不能继续工作？</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="top-rule"></div>
+    <div class="slide-content">
+      <p class="kicker reveal">03 / Real Rest</p>
+      <h2 class="reveal">真的休息，才放行</h2>
+      <div class="talk-card green reveal">
+        <p>需要休息时，它会读取 macOS 的空闲状态。<br>没动鼠标键盘，才算真的在休息。</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    class SlidePresentation {
+      constructor() {
+        this.slides = Array.from(document.querySelectorAll(".slide"));
+        this.currentSlide = 0;
+        this.progressBar = document.querySelector(".progress-bar");
+        this.navDots = document.querySelector(".nav-dots");
+        this.setupNavDots();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupObserver();
+        this.updateUI();
+      }
+      goTo(index) {
+        const next = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.currentSlide = next;
+        this.slides[next].scrollIntoView({ behavior: "smooth", block: "start" });
+        this.updateUI();
+      }
+      setupKeyboardNav() {
+        document.addEventListener("keydown", (event) => {
+          if (["ArrowDown", "ArrowRight", " ", "PageDown"].includes(event.key)) {
+            event.preventDefault();
+            this.goTo(this.currentSlide + 1);
+          }
+          if (["ArrowUp", "ArrowLeft", "PageUp"].includes(event.key)) {
+            event.preventDefault();
+            this.goTo(this.currentSlide - 1);
+          }
+        });
+      }
+      setupTouchNav() {
+        let startY = 0;
+        document.addEventListener("touchstart", (event) => {
+          startY = event.touches[0].clientY;
+        }, { passive: true });
+        document.addEventListener("touchend", (event) => {
+          const delta = startY - event.changedTouches[0].clientY;
+          if (Math.abs(delta) > 40) this.goTo(this.currentSlide + (delta > 0 ? 1 : -1));
+        }, { passive: true });
+      }
+      setupObserver() {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+              this.currentSlide = this.slides.indexOf(entry.target);
+              this.updateUI();
+            }
+          });
+        }, { threshold: 0.6 });
+        this.slides.forEach((slide) => observer.observe(slide));
+      }
+      setupNavDots() {
+        this.slides.forEach((_, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.addEventListener("click", () => this.goTo(index));
+          this.navDots.appendChild(button);
+        });
+      }
+      updateUI() {
+        this.progressBar.style.width = `${((this.currentSlide + 1) / this.slides.length) * 100}%`;
+        Array.from(this.navDots.children).forEach((dot, index) => {
+          dot.classList.toggle("active", index === this.currentSlide);
+        });
+      }
+    }
+    new SlidePresentation();
+  </script>
+</body>
+</html>

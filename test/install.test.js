@@ -75,7 +75,7 @@ test("installClaudeHook preserves existing hooks and adds UserPromptSubmit", asy
     );
     assert.equal(settings.hooks.UserPromptSubmit[0].hooks[0].command, command);
     assert.equal(config.mode, "strict");
-    assert.equal(config.workDurationMs, 1_800_000);
+    assert.equal(config.workDurationMs, 1_500_000);
     assert.equal(backup.hooks.UserPromptSubmit, undefined);
   } finally {
     await rm(dir, { recursive: true, force: true });
