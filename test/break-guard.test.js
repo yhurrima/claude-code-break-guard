@@ -46,7 +46,7 @@ test("prompt after the work limit starts a break and blocks the prompt", () => {
   });
 
   assert.equal(result.decision, "block");
-  assert.equal(result.state.breakUntilMs, 28 * MINUTE + 1);
+  assert.equal(result.state.breakUntilMs, 30 * MINUTE + 1);
   assert.match(result.reason, /强制休息中/);
 });
 
@@ -56,12 +56,12 @@ test("prompt during an active break stays blocked with required idle time", () =
     idleMs: 0,
     state: {
       workStartedAtMs: 0,
-      breakUntilMs: 28 * MINUTE,
+      breakUntilMs: 30 * MINUTE,
     },
   });
 
   assert.equal(result.decision, "block");
-  assert.match(result.reason, /还需要真实空闲 3 分钟/);
+  assert.match(result.reason, /还需要真实空闲 5 分钟/);
 });
 
 test("enough system idle time counts as rest and resets the work timer", () => {
@@ -418,9 +418,9 @@ test("runUserPromptSubmitHook blocks with visible stderr, notifies, and persists
     assert.equal(result.stdout, "");
     assert.match(result.stderr, /强制休息中/);
     assert.deepEqual(notifications, [
-      "强制休息中，还剩 3 分钟。请离开电脑休息一下。",
+      "强制休息中，还剩 5 分钟。请离开电脑休息一下。",
     ]);
-    assert.equal(state.breakUntilMs, 28 * MINUTE + 1);
+    assert.equal(state.breakUntilMs, 30 * MINUTE + 1);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -442,7 +442,7 @@ test("loadConfig merges config file values with defaults", async () => {
     const config = await loadConfig(configPath);
     assert.equal(config.workDurationMs, 3_000);
     assert.equal(config.breakDurationMs, 2_000);
-    assert.equal(config.idleRestThresholdMs, 3 * MINUTE);
+    assert.equal(config.idleRestThresholdMs, 5 * MINUTE);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

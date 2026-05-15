@@ -38,7 +38,7 @@ cd claude-code-break-guard
 node scripts/install.js
 ```
 
-默认配置：工作 `25` 分钟，休息 `3` 分钟，strict 模式。
+默认配置：工作 `25` 分钟，休息 `5` 分钟，strict 模式。
 
 ## 安装
 
@@ -55,11 +55,11 @@ node scripts/install.js --work <时间> --rest <时间> --mode <模式>
 示例：
 
 ```bash
-# strict 模式，工作 25 分钟，休息 3 分钟
-node scripts/install.js --work 25m --rest 3m
+# strict 模式，工作 25 分钟，休息 5 分钟
+node scripts/install.js --work 25m --rest 5m
 
-# gentle 模式，工作 30 分钟，休息 5 分钟
-node scripts/install.js --work 30m --rest 5m --mode gentle
+# gentle 模式，工作 30 分钟，休息 10 分钟
+node scripts/install.js --work 30m --rest 10m --mode gentle
 ```
 
 安装会自动：

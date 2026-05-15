@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 export const DEFAULT_CONFIG = Object.freeze({
   mode: "strict",
   workDurationMs: 25 * 60 * 1000,
-  breakDurationMs: 3 * 60 * 1000,
-  idleRestThresholdMs: 3 * 60 * 1000,
+  breakDurationMs: 5 * 60 * 1000,
+  idleRestThresholdMs: 5 * 60 * 1000,
   minRestChunkMs: 60 * 1000,
 });
 
